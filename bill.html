@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Invoice Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .input-form {
+      background-color: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .items-container {
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .item-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .item-row input {
+      flex: 1;
+    }
+    button {
+      background-color: #4a4dd1;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #3a3daa;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+    }
+    
+    /* Invoice Styles - Condensed for Print */
+    .invoice {
+      padding: 15px;
+      border: 1px solid #ddd;
+      margin-top: 20px;
+      max-height: 100%;
+      font-size: 12px;
+    }
+    .invoice-header {
+      background-color: #283471;
+      color: white;
+      padding: 10px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo-area {
+      display: flex;
+      align-items: center;
+    }
+    .logo {
+      margin-right: 10px;
+    }
+    .company-info {
+      background-color: #283471;
+      padding: 5px 15px;
+      color: white;
+      font-size: 11px;
+    }
+    .invoice-title {
+      background-color: white;
+      padding: 10px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .invoice-title h2 {
+      margin: 0;
+      color: #283471;
+      font-size: 16px;
+    }
+    .customer-details {
+      background-color: #a0a4ea;
+      padding: 8px 15px;
+      color: #283471;
+    }
+    .invoice-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .invoice-table th {
+      background-color: #a0a4ea;
+      color: #283471;
+      text-align: left;
+      padding: 5px;
+      font-size: 11px;
+    }
+    .invoice-table td {
+      border: 1px solid #ddd;
+      padding: 5px;
+      font-size: 11px;
+    }
+    .totals {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .totals table {
+      width: 250px;
+      border-collapse: collapse;
+    }
+    .totals td {
+      border: 1px solid #ddd;
+      padding: 5px;
+      font-size: 11px;
+    }
+    .payment-info {
+      margin-top: 10px;
+      padding: 8px 15px;
+      background-color: #f9f9f9;
+      font-size: 11px;
+    }
+    .terms {
+      margin-top: 10px;
+      font-size: 10px;
+    }
+    .terms h4 {
+      margin: 5px 0;
+    }
+    .signature {
+      margin-top: 15px;
+      text-align: left;
+    }
+    .signature-img {
+      height: 40px;
+    }
+    .invoice-amount-words {
+      font-size: 11px;
+      margin-top: 10px;
+    }
+    @media print {
+      .input-form, .actions {
+        display: none;
+      }
+      .invoice {
+        border: none;
+        padding: 0;
+      }
+      @page {
+        size: A4;
+        margin: 10mm;
+      }
+      body {
+        padding: 0;
+        margin: 0;
+        -webkit-print-color-adjust: exact !important;   /* Chrome, Safari */
+        color-adjust: exact !important;                 /* Firefox */
+        print-color-adjust: exact !important;           /* Modern syntax */
+      }
+      /* Ensure colored elements retain their colors */
+      .invoice-header, .company-info {
+        background-color: #283471 !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .customer-details, .invoice-table th {
+        background-color: #a0a4ea !important;
+        color: #283471 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .payment-info {
+        background-color: #f9f9f9 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="input-form">
+      <h2>Invoice Generator</h2>
+      
+      <div class="form-group">
+        <label for="billTo">Bill To:</label>
+        <input type="text" id="billTo" placeholder="Customer Name">
+      </div>
+      
+      <h3>Items</h3>
+      <div id="items-container" class="items-container">
+        <div class="item-row">
+          <input type="text" placeholder="Item Name" class="item-name">
+          <input type="text" placeholder="HSN/SAC" value="-" class="item-hsn">
+          <input type="number" placeholder="Quantity" class="item-quantity">
+          <input type="number" placeholder="Price/Unit" class="item-price">
+          <input type="number" placeholder="Amount" class="item-amount" readonly>
+        </div>
+      </div>
+      
+      <button id="add-item">Add Item</button>
+      
+      <div class="actions">
+        <button id="generate-invoice">Generate Invoice</button>
+        <button id="print-invoice">Print Invoice</button>
+      </div>
+    </div>
+    
+    <div id="invoice" class="invoice hidden">
+      <div class="invoice-header">
+        <div class="logo-area">
+          <div class="logo">
+            <img src="Domain.png" alt="Company Logo" width="30" height="30">
+          </div>
+          <div>
+            <h2>DOMAIN COMPUTERS</h2>
+          </div>
+        </div>
+        <div class="header-contact">
+          <span>9134517890</span> | 
+          <span>domaincomp@gmail.com</span> | 
+          <span>SUNRISE APTS GALA NO 5/6 LACHERI ROAD NEAR KALKIT</span>
+        </div>
+      </div>
+      
+      <div class="company-info">
+        <div>State: Maharashtra</div>
+      </div>
+      
+      <div class="invoice-title">
+        <h2>Bill of Supply</h2>
+        <div>
+          <!-- <div>Invoice No.: <span id="display-invoice-no">4250</span></div> -->
+          <div>Date: <span id="display-date">14/02/2024</span></div>
+          <div>Time: <span id="display-time">01:41 PM</span></div>
+        </div>
+      </div>
+      
+      <div class="customer-details">
+        <div>Bill To: <span id="display-bill-to">ARUN DHOLE</span></div>
+      </div>
+      
+      <table class="invoice-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Item name</th>
+            <th>HSN/ SAC</th>
+            <th>Quantity</th>
+            <th>Price/ Unit</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody id="invoice-items">
+          <!-- Items will be added here -->
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3">Total</td>
+            <td id="total-quantity">1</td>
+            <td></td>
+            <td id="total-amount">₹ 21,000.00</td>
+          </tr>
+        </tfoot>
+      </table>
+      
+      <div class="totals">
+        <table>
+          <tr>
+            <td>Sub Total</td>
+            <td id="sub-total">₹ 21,000.00</td>
+          </tr>
+          <tr>
+            <td>Total</td>
+            <td id="grand-total">₹ 21,000.00</td>
+          </tr>
+        </table>
+      </div>
+      
+      <div class="payment-info">
+        <div>Pay To:</div>
+        <div>Bank Name: UCO BANK, KALKIT BR MUMBAI</div>
+        <div>Bank Account No.: 030301100100</div>
+        <div>Bank IFSC code: UCBA0000303</div>
+        <div>Account holder's name: DOMAIN COMPUTERS</div>
+      </div>
+      
+      <div class="invoice-amount-words">
+        <p>Invoice Amount in Words</p>
+        <p id="amount-in-words">Twenty One Thousand Rupees only</p>
+      </div>
+      
+      <div class="terms">
+        <h4>Terms And Conditions</h4>
+        <p>All rates are including Taxes | Service call may attend within 24 hrs of working days of domain computers | Goods once sold will not take back or exchange at any condition | No warranty for broken, burnt, damage physically | For hardware item (parts under any scheme) | Companies with collection centre/ service centers generally take 2-3 weeks for replacement under warranty No standby material will be provided by any company service center | Please co-operate with us to serve you better.</p>
+      </div>
+      
+      <div class="signature">
+        <p>For: DOMAIN COMPUTERS</p>
+        <img src="Images/sign.png" alt="Authorized Signature" class="signature-img">
+        <p>Authorized Signatory</p>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Auto calculate amount
+      document.querySelector('.item-quantity').addEventListener('input', updateAmount);
+      document.querySelector('.item-price').addEventListener('input', updateAmount);
+      
+      function updateAmount() {
+        const row = this.closest('.item-row');
+        const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
+        const price = parseFloat(row.querySelector('.item-price').value) || 0;
+        row.querySelector('.item-amount').value = (quantity * price).toFixed(2);
+      }
+      
+      // Add new item row
+      document.getElementById('add-item').addEventListener('click', function() {
+        const container = document.getElementById('items-container');
+        const newRow = document.createElement('div');
+        newRow.className = 'item-row';
+        newRow.innerHTML = `
+          <input type="text" placeholder="Item Name" class="item-name">
+          <input type="text" placeholder="HSN/SAC" class="item-hsn">
+          <input type="number" placeholder="Quantity" class="item-quantity">
+          <input type="number" placeholder="Price/Unit" class="item-price">
+          <input type="number" placeholder="Amount" class="item-amount" readonly>
+        `;
+        container.appendChild(newRow);
+        
+        // Add event listeners to new inputs
+        newRow.querySelector('.item-quantity').addEventListener('input', updateAmount);
+        newRow.querySelector('.item-price').addEventListener('input', updateAmount);
+      });
+      
+      // Generate invoice
+      document.getElementById('generate-invoice').addEventListener('click', function() {
+        // Get current date and time
+        const now = new Date();
+        const formattedDate = now.toLocaleDateString('en-GB');
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const hours12 = hours % 12 || 12;
+        const formattedTime = hours12 + ':' + minutes.toString().padStart(2, '0') + ' ' + ampm;
+        
+        document.getElementById('display-date').textContent = formattedDate;
+        document.getElementById('display-time').textContent = formattedTime;
+        
+        // Update customer details
+        document.getElementById('display-bill-to').textContent = document.getElementById('billTo').value || 'ARUN DHOLE';
+        
+        // Generate invoice items
+        const invoiceItemsTable = document.getElementById('invoice-items');
+        invoiceItemsTable.innerHTML = '';
+        
+        const itemRows = document.querySelectorAll('.item-row');
+        let totalQuantity = 0;
+        let totalAmount = 0;
+        
+        itemRows.forEach((row, index) => {
+          const itemName = row.querySelector('.item-name').value || '-';
+          const itemHsn = row.querySelector('.item-hsn').value || '-';
+          const itemQuantity = parseInt(row.querySelector('.item-quantity').value) || 0;
+          const itemPrice = parseFloat(row.querySelector('.item-price').value) || 0;
+          const itemAmount = itemQuantity * itemPrice;
+          
+          totalQuantity += itemQuantity;
+          totalAmount += itemAmount;
+          
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${itemName}</td>
+            <td>${itemHsn}</td>
+            <td>${itemQuantity}</td>
+            <td>₹ ${itemPrice.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td>₹ ${itemAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+          `;
+          invoiceItemsTable.appendChild(tr);
+        });
+        
+        // Update totals
+        document.getElementById('total-quantity').textContent = totalQuantity;
+        document.getElementById('total-amount').textContent = '₹ ' + totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('sub-total').textContent = '₹ ' + totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('grand-total').textContent = '₹ ' + totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        // Amount in words
+        document.getElementById('amount-in-words').textContent = numberToWords(totalAmount) + ' Rupees only';
+        
+        // Show invoice
+        document.getElementById('invoice').classList.remove('hidden');
+      });
+      
+      // Print invoice
+      document.getElementById('print-invoice').addEventListener('click', function() {
+        window.print();
+      });
+      
+      // Helper function to convert number to words
+      function numberToWords(num) {
+        const single = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+        const double = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        const formatTens = (num) => num < 10 ? single[num] : num < 20 ? double[num - 10] : tens[Math.floor(num / 10)] + (num % 10 ? ' ' + single[num % 10] : '');
+        const formatHundreds = (num) => num < 100 ? formatTens(num) : single[Math.floor(num / 100)] + ' Hundred' + (num % 100 ? ' ' + formatTens(num % 100) : '');
+        
+        if (num === 0) return 'Zero';
+        
+        const thousand = Math.floor(num / 1000) % 100;
+        const lakh = Math.floor(num / 100000) % 100;
+        const crore = Math.floor(num / 10000000) % 100;
+        
+        let str = '';
+        if (crore) str += formatTens(crore) + ' Crore ';
+        if (lakh) str += formatTens(lakh) + ' Lakh ';
+        if (thousand) str += formatTens(thousand) + ' Thousand ';
+        if (num % 1000) str += formatHundreds(num % 1000);
+        
+        return str.trim();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="admin.css">
+    <title>Document</title>
+    <h1>Admin Login</h1>
+</head>
+<body>
+    <form>
+        Name<input type="text" placeholder="Enter name " value="Ulkesh" id="101"><br><br>
+        Pass<input type="password" placeholder="Enter Pass" id="102" value="123"><br><br>
+        <button type="button" onclick="Login()">Login</button>
+
+    </form>
+    <script>
+        function Login()
+        {
+            var s=document.getElementById("102").value;
+            if(s==123)
+        {
+            window.location.href = "/Apage1.html";
+        }
+        else
+        {
+            alert("Invalid pass");
+        }
+        }
+    </script>
+    
+</body>
+</html>

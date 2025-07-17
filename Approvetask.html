@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeFlux</title>
+    <link rel="stylesheet" href="Approvetask.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+   <style>
+        .task-details {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 3px solid #3F7D58;
+        }
+        
+        .task-details p {
+            margin: 8px 0;
+            line-height: 1.4;
+        }
+        
+        .task-details strong {
+            color: #4CAF50;
+        }
+        
+        .task-item {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .task-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .task-item.selected {
+            background: rgba(63, 125, 88, 0.2);
+            border-left: 4px solid #3F7D58;
+        }
+        
+        .task-summary {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .task-preview {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        .button-container {
+            margin-top: 15px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .approve-btn, .reject-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .approve-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .approve-btn:hover {
+            background: #45a049;
+        }
+        
+        .reject-btn {
+            background: #f44336;
+            color: white;
+        }
+        
+        .reject-btn:hover {
+            background: #da190b;
+        }
+        
+        .no-selection {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Chat list section -->
+        <div class="chat-list">
+            <h3><i class="fas fa-users"></i> Employees</h3>
+            <div class="chat-item"><i class="fas fa-user"></i> Employee 1</div>
+            <div class="chat-item"><i class="fas fa-user"></i> Employee 2</div>
+            <div class="chat-item"><i class="fas fa-user"></i> Employee 3</div>
+            <div class="chat-item"><i class="fas fa-user"></i> Employee 4</div>
+            <div class="chat-item"><i class="fas fa-user"></i> Employee 5</div>
+            <div class="chat-item"><i class="fas fa-user"></i> Employee 6</div>
+            <div class="chat-item"><i class="fas fa-user"></i> Employee 7</div>
+            <div class="chat-item"><i class="fas fa-user"></i> Employee 8</div>
+        </div>
+        
+        <!-- Chat window section -->
+        <div class="chat-window">
+            <div class="pending-requests">
+                <h3><i class="fas fa-tasks"></i> Select an Employee</h3>
+                <div id="task-list-container">
+                    <ul id="pending-list">
+                        <!-- Tasks will be inserted dynamically here -->
+                    </ul>
+                </div>
+                <div id="task-details-container" style="display: none;">
+                    <div id="task-details" class="task-details">
+                        <!-- Task details will be shown here -->
+                    </div>
+                    <div class="button-container">
+                        <button id="approve-task-btn" class="approve-btn">
+                            <i class="fas fa-check"></i> Approve Task
+                        </button>
+                        <button id="reject-task-btn" class="reject-btn">
+                            <i class="fas fa-times"></i> Reject Task
+                        </button>
+                        <button id="back-btn" class="approve-btn" style="background: #666;">
+                            <i class="fas fa-arrow-left"></i> Back to List
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="menu-icon" onclick="toggleSidebar()"><i class="fas fa-bars"></i></div>
+    <div class="sidebar" id="sidebar">
+        <a href="Apage1.html"><i class="fas fa-home"></i> Home</a>
+        <a href="sender.html"><i class="fas fa-tasks"></i> Assign Task</a>
+        <a href="overalltask.html"><i class="fas fa-project-diagram" style="color: white;"></i> Overall Task</a>
+        <a href="Approvetask.html"><i class="fas fa-check-circle"></i> Approve Task</a>
+        <a href="table.html"><i class="fas fa-clipboard-check"></i> Completed Tasks</a>
+        <a href="Dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a>
+    </div>
+
+    <script>
+        let selectedTask = null;
+        let currentEmployee = null;
+        
+        function toggleSidebar() {
+            var sidebar = document.getElementById("sidebar");
+            if (sidebar.classList.contains("active")) {
+                sidebar.classList.remove("active");
+            } else {
+                sidebar.classList.add("active");
+            }
+        }
+
+        // Helper function to calculate days difference
+        function calculateDaysDifference(dateString) {
+            if (!dateString) {
+                return "Date not available";
+            }
+
+            try {
+                // Handle the MySQL datetime format: "2025-03-14 02:29:23"
+                let taskDate;
+                
+                // Method 1: Direct parsing (works for most formats)
+                taskDate = new Date(dateString);
+                
+                // Method 2: If direct parsing fails, try converting to ISO format
+                if (isNaN(taskDate.getTime())) {
+                    // Convert "2025-03-14 02:29:23" to "2025-03-14T02:29:23"
+                    const isoFormat = dateString.replace(' ', 'T');
+                    taskDate = new Date(isoFormat);
+                }
+
+                // If still invalid, return error message
+                if (isNaN(taskDate.getTime())) {
+                    console.error("Invalid date format:", dateString);
+                    return "Invalid date format";
+                }
+
+                const today = new Date();
+                const timeDifference = today - taskDate;
+                const daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
+
+                if (daysDifference < 0) {
+                    return "Future date";
+                } else if (daysDifference === 0) {
+                    return "Today";
+                } else if (daysDifference === 1) {
+                    return "1 day ago";
+                } else {
+                    return `${daysDifference} days ago`;
+                }
+            } catch (error) {
+                console.error("Error calculating date difference:", error);
+                return "Date calculation error";
+            }
+        }
+        
+        document.addEventListener("DOMContentLoaded", function () {
+            const chatItems = document.querySelectorAll(".chat-item");
+            const pendingList = document.getElementById("pending-list");
+            const pendingTitle = document.querySelector(".pending-requests h3");
+            const taskListContainer = document.getElementById("task-list-container");
+            const taskDetailsContainer = document.getElementById("task-details-container");
+            const taskDetailsDiv = document.getElementById("task-details");
+            const approveBtn = document.getElementById("approve-task-btn");
+            const rejectBtn = document.getElementById("reject-task-btn");
+            const backBtn = document.getElementById("back-btn");
+
+            // Add animation on load
+            chatItems.forEach((item, index) => {
+                item.style.animationDelay = `${index * 0.1}s`;
+            });
+
+            chatItems.forEach(chatItem => {
+                chatItem.addEventListener("click", function () {
+                    // Reset active state
+                    chatItems.forEach(item => item.classList.remove("active"));
+                    // Add active state to clicked item
+                    chatItem.classList.add("active");
+                    
+                    const name = chatItem.textContent.trim();
+                    const timeline = name.split(" ")[1];
+                    currentEmployee = { name, timeline };
+                    
+                    // Show task list, hide details
+                    showTaskList();
+                    fetchCompletedTasks(timeline, name);
+                });
+            });
+
+            function showTaskList() {
+                taskListContainer.style.display = "block";
+                taskDetailsContainer.style.display = "none";
+            }
+
+            function showTaskDetails(task) {
+                selectedTask = task;
+                
+                // Use the correct date field based on your database structure
+                // Try multiple possible date fields
+                const dateField = task.completed_at || task.created_at || task.assigned_at || task.timestamp;
+                const timeAssigned = calculateDaysDifference(dateField);
+
+                // Debug: Log the task data to console
+                console.log("Task data:", task);
+                console.log("Date field used:", dateField);
+                console.log("Time assigned:", timeAssigned);
+
+                taskDetailsDiv.innerHTML = `
+                    <p><strong>Customer Name:</strong> ${task.name || 'Not specified'}</p>
+                    <p><strong>Phone Number:</strong> ${task.number || 'Not specified'}</p>
+                    <p><strong>Accessories:</strong> ${task.accessories || 'Not specified'}</p>
+                    <p><strong>Problem Reported:</strong> ${task.problem_reported || 'Not specified'}</p>
+                    <p><strong>Time Assigned:</strong> ${timeAssigned}</p>
+                    
+                    
+
+                `;
+
+                taskListContainer.style.display = "none";
+                taskDetailsContainer.style.display = "block";
+            }
+
+            backBtn.addEventListener("click", showTaskList);
+
+            approveBtn.addEventListener("click", function() {
+                if (selectedTask) {
+                    approveTask(currentEmployee.name, selectedTask.id);
+                }
+            });
+
+            rejectBtn.addEventListener("click", function() {
+                if (selectedTask) {
+                    rejectTask(currentEmployee.name, selectedTask.id);
+                }
+            });
+
+            function fetchCompletedTasks(timeline, employeeName) {
+                pendingTitle.innerHTML = `<i class="fas fa-tasks"></i> ${employeeName}'s Pending Requests`;
+                pendingList.innerHTML = "<p><i class='fas fa-spinner fa-spin'></i> Loading tasks...</p>";
+
+                fetch(`http://localhost:1080/completed-tasks/${timeline}`)
+                    .then(response => response.json())
+                    .then(tasks => {
+                        console.log("Fetched tasks:", tasks); // Debug log
+                        pendingList.innerHTML = "";
+
+                        if (tasks.length === 0) {
+                            pendingList.innerHTML = "<p class='no-selection'><i class='fas fa-info-circle'></i> No pending tasks.</p>";
+                            return;
+                        }
+
+                        tasks.forEach((task, index) => {
+                            const li = document.createElement("li");
+                            li.className = "task-item";
+                            li.style.animationDelay = `${index * 0.1}s`;
+                            
+                            // Calculate time for preview using the correct date field
+                            const dateField = task.completed_at || task.created_at || task.assigned_at || task.timestamp;
+                            const timeAssigned = calculateDaysDifference(dateField);
+                            
+                            // Task content
+                            li.innerHTML = `
+                                <div class="task-summary">
+                                    <i class="fas fa-clipboard-list"></i> ${task.name || 'Unknown Customer'}
+                                </div>
+                                <div class="task-preview">
+                                    ${(task.problem_reported || 'No description').substring(0, 60)}${(task.problem_reported || '').length > 60 ? '...' : ''}
+                                </div>
+                                <div style="font-size: 0.8em; color: #aaa; margin-top: 5px;">
+                                    <i class="fas fa-clock"></i> ${timeAssigned}
+                                </div>
+                            `;
+
+                            // Color logic based on status
+                            if (task.status === "rejected") {
+                                li.style.borderLeft = "3px solid #f44336";
+                            } else if (task.assigned_to === null || task.assigned_to == 101) {
+                                li.style.borderLeft = "3px solid #3F7D58";
+                            } else {
+                                li.style.borderLeft = "3px solid #f44336";
+                            }
+
+                            // Click handler to show details
+                            li.addEventListener("click", function() {
+                                // Remove selected class from all items
+                                document.querySelectorAll('.task-item').forEach(item => {
+                                    item.classList.remove('selected');
+                                });
+                                // Add selected class to clicked item
+                                li.classList.add('selected');
+                                showTaskDetails(task);
+                            });
+
+                            pendingList.appendChild(li);
+                        });
+                    })
+                    .catch(error => {
+                        console.error("❌ Error fetching completed tasks:", error);
+                        pendingList.innerHTML = "<p><i class='fas fa-exclamation-triangle'></i> Failed to load tasks.</p>";
+                    });
+            }
+
+            function approveTask(employee, taskId) {
+                approveBtn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Processing...";
+                approveBtn.disabled = true;
+                
+                fetch(`http://localhost:1080/approve-task/${taskId}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("✅ Task approved successfully!");
+                        showTaskList();
+                        fetchCompletedTasks(employee.split(" ")[1], employee);
+                    } else {
+                        alert(`❌ Error approving task: ${data.message}`);
+                    }
+                    approveBtn.innerHTML = "<i class='fas fa-check'></i> Approve Task";
+                    approveBtn.disabled = false;
+                })
+                .catch(error => {
+                    console.error("❌ Error approving task:", error);
+                    approveBtn.innerHTML = "<i class='fas fa-check'></i> Approve Task";
+                    approveBtn.disabled = false;
+                    alert("❌ Failed to approve task.");
+                });
+            }
+
+            function rejectTask(employeeName, taskId) {
+                const rejectionNote = prompt("Please provide a short note for the rejection:");
+
+                if (rejectionNote) {
+                    rejectBtn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Processing...";
+                    rejectBtn.disabled = true;
+                    
+                    const timeline = employeeName.split(" ")[1];
+
+                    fetch(`http://localhost:1080/reject-task/${taskId}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            note: rejectionNote,
+                            assigned_to: timeline
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert("❌ Task rejected successfully!");
+                            showTaskList();
+                            fetchCompletedTasks(timeline, employeeName);
+                        } else {
+                            alert(`❌ Error: ${data.message}`);
+                        }
+                        rejectBtn.innerHTML = "<i class='fas fa-times'></i> Reject Task";
+                        rejectBtn.disabled = false;
+                    })
+                    .catch(error => {
+                        console.error("❌ Error rejecting task:", error);
+                        rejectBtn.innerHTML = "<i class='fas fa-times'></i> Reject Task";
+                        rejectBtn.disabled = false;
+                        alert("❌ Failed to reject task.");
+                    });
+                }
+            }
+        });
+    </script>
+    
+</body>
+</html>

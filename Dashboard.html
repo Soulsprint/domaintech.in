@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="dashboard.css">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            margin: 20px;
+        }
+
+        .graph, .table {
+            width: 600px;
+            height: 400px;
+            border: 2px solid black;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.76);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .table {
+            position: relative;
+        }
+
+        .boxes {
+            display: flex;
+            justify-content: center;
+            gap: 100px;
+            margin: 20px;
+            position: relative;
+            left: 100px;
+        }
+
+        .box {
+            width: 300px;
+            height: 150px;
+            border: 2px solid black;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #261e19, #3b2e22);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .progress-container {
+            width: 80%;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            height: 15px;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            border-radius: 10px;
+        }
+
+        .progress-1 { background-color: #4CAF50; width: 70%; }  /* 70% progress */
+        .progress-2 { background-color: #ffa500; width: 50%; }  /* 50% progress */
+        .progress-3 { background-color: #FF0000; width: 30%; }  /* 30% progress */
+
+    </style>
+</head>
+<body>
+
+    <div class="sidebar" id="sidebar" style="text-align: left;">
+        <a href="Apage1.html"><i class="fas fa-home"  style="color: white;" ></i> Home</a>
+        <a href="sender.html"><i class="fas fa-tasks"  style="color: white;"></i> Assign Task</a>
+        <a href="overalltask.html"><i class="fas fa-project-diagram" style="color: white;"></i> Overall Task</a>
+        <a href="Approvetask.html"><i class="fas fa-check-circle"  style="color: white;"></i> Approve Task</a>
+        <a href="table.html"><i class="fas fa-clipboard-check"  style="color: white;"></i> Completed Tasks</a>
+        <a href="Dashboard.html"><i class="fas fa-chart-line"  style="color: white;"></i> Dashboard</a>
+        <a href="Employee1.html"><i class="fas fa-user" style="color: white;"></i> Employee 1</a>
+        <a href="Employee2.html"><i class="fas fa-user" style="color: white;"></i> Employee 2</a>
+        <a href="Employee3.html"><i class="fas fa-user" style="color: white;"></i> Employee 3</a>
+        <a href="Employee4.html"><i class="fas fa-user" style="color: white;"></i> Employee 4</a>
+        <a href="Employee5.html"><i class="fas fa-user" style="color: white;"></i> Employee 5</a>
+        <a href="Employee6.html"><i class="fas fa-user" style="color: white;"></i> Employee 6</a>
+        <a href="Employee7.html"><i class="fas fa-user" style="color: white;"></i> Employee 7</a>
+        <a href="Employee8.html"><i class="fas fa-user" style="color: white;"></i> Employee 8</a>
+       
+    </div>
+
+    <div class="content">
+        <h1>Welcome to the Employee Task Management System</h1>
+        <p>Select an option from the sidebar to proceed.</p>
+    </div>
+
+    <div class="boxes">
+        <div class="box">
+            <h3>Tasks</h3>
+            <div class="progress-container">
+                <div class="progress-bar progress-1"></div>
+            </div>
+        </div>
+        <div class="box">
+            <h3>Approve task</h3>
+            <div class="progress-container">
+                <div class="progress-bar progress-2"></div>
+            </div>
+        </div>
+        <div class="box">
+            <h3>Rejected Task</h3>
+            <div class="progress-container">
+                <div class="progress-bar progress-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="graph" >
+        <canvas id="densityChart"></canvas>
+    </div>
+
+   
+
+    <div class="table-container" style="margin-top: 350px;">
+        <h2>Task</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Number</th>
+                    <th>Accessories</th>
+                    <th>Problem Reported</th>
+                    <th>Emp-ID</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dynamic data rows will be inserted here -->
+            </tbody>
+        </table>
+        
+    </div>
+
+    <script>
+         document.addEventListener("DOMContentLoaded", function () {
+    fetchTasks();
+    fetchProgress();
+
+    document.getElementById("timeFilter").addEventListener("change", function() {
+                fetchProgressData(this.value);
+            });
+        });
+
+    
+        function fetchTasks() {
+    fetch("http://localhost:1080/tasks")
+        .then(response => response.json())
+        .then(data => {
+            console.log("✅ Task Data:", data);
+            const tableBody = document.querySelector("tbody");
+            tableBody.innerHTML = "";
+
+            data.sort((a, b) => a.id - b.id);
+
+            data.forEach((task, index) => {
+                const createdAt = new Date(task.created_at);
+                const currentTime = new Date();
+                const timeDiff = Math.floor((currentTime - createdAt) / (1000 * 60 * 60 * 24)); // Convert ms to days
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${task.name}</td>
+                    <td>${task.number}</td>
+                    <td>${task.accessories}</td>
+                    <td>${task.problem_reported}</td>
+                    <td>${task.timeline}</td>
+                    <td>${timeDiff} days ago</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        })
+        .catch(error => console.error("❌ Error fetching tasks:", error));
+}
+
+    
+        let progressChart;
+
+        async function fetchProgress() {
+            try {
+                const response = await fetch("http://localhost:1080/progress");
+                const data = await response.json();
+
+                document.querySelector(".progress-1").style.width = `${data.tasks}%`;
+                document.querySelector(".progress-1").textContent = `${data.tasks} Tasks`;
+
+                document.querySelector(".progress-2").style.width = `${data.approved}%`;
+                document.querySelector(".progress-2").textContent = `${data.approved} Approved`;
+
+                document.querySelector(".progress-3").style.width = `${data.rejected}%`;
+                document.querySelector(".progress-3").textContent = `${data.rejected} Rejected`;
+
+                updateChart(data);
+            } catch (error) {
+                console.error("❌ Error fetching progress:", error);
+            }
+        }
+
+        function updateChart(data) {
+    const ctx = document.getElementById("densityChart").getContext("2d");
+
+    if (progressChart) {
+        progressChart.destroy(); // Destroy the previous chart before updating
+    }
+
+    progressChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: ["Total Tasks", "Approved Tasks", "Rejected Tasks"],
+            datasets: [
+                {
+                    label: "Total Tasks",
+                    data: [data.tasks, 0, 0], 
+                    backgroundColor: "blue"
+                },
+                {
+                    label: "Approved Tasks",
+                    data: [0, data.approved, 0], 
+                    backgroundColor: "green"
+                },
+                {
+                    label: "Rejected Tasks",
+                    data: [0, 0, data.rejected], 
+                    backgroundColor: "red"
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: true // Show labels for each category
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true, // Ensures bars are grouped correctly
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true
+                }
+            },
+            barPercentage: 0.5, // Adjusts the width of bars
+            categoryPercentage: 0.5 // Ensures bars are centered in each category
+        }
+    });
+}
+
+//      function fetchProgress() {
+//     fetch("http://localhost:1080/progress")
+//         .then(response => response.json())
+//         .then(data => {
+//             document.querySelector(".progress-1").style.width = "100%";
+//             document.querySelector(".progress-1").textContent = `${data.tasks} Tasks`;
+
+//             document.querySelector(".progress-2").style.width = "100%";
+//             document.querySelector(".progress-2").textContent = `${data.approved} Approved`;
+
+//             document.querySelector(".progress-3").style.width = "100%";
+//             document.querySelector(".progress-3").textContent = `${data.rejected} Rejected`;
+//         })
+//         .catch(error => console.error("❌ Error fetching progress:", error));
+// }
+
+
+setInterval(fetchProgress, 5000);
+        fetchProgress(); 
+        fetchApprovedTasks();
+
+
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Visualization Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .date-filter {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .date-input {
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .filter-button {
+            padding: 8px 25px;
+            background-color: #3a3f4b;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        h2 {
+            margin-top: 40px;
+            margin-bottom: 20px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .time-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .time-btn {
+            padding: 6px 16px;
+            background-color: #f1f2f4;
+            color: #333;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .time-btn.active {
+            background-color: #e3424b;
+            color: white;
+        }
+
+        .chart-container {
+            background-color: #ffeff0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 10px;
+            position: relative;
+            height: 300px;
+        }
+
+        .legend {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .legend-color {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #e3424b;
+            margin-right: 8px;
+        }
+
+        .legend-text {
+            font-weight: 500;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="date-filter">
+            <input type="date" class="date-input" id="start-date" placeholder="dd-mm-yyyy">
+            <input type="date" class="date-input" id="end-date" placeholder="dd-mm-yyyy">
+            <button class="filter-button" id="filter-btn">Filter</button>
+        </div>
+
+        <h2>Overall Task Progress</h2>
+
+        <div class="time-buttons">
+            <button class="time-btn active" data-timeframe="3d">3D</button>
+            <button class="time-btn" data-timeframe="7d">7D</button>
+            <button class="time-btn" data-timeframe="14d">14D</button>
+            <button class="time-btn" data-timeframe="1m">1M</button>
+            <button class="time-btn" data-timeframe="3m">3M</button>
+        </div>
+
+        <div class="legend">
+            <span class="legend-color"></span>
+            <span class="legend-text">Total Tasks</span>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="chart-canvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // DOM elements
+        const chartCanvas = document.getElementById('chart-canvas');
+        const timeButtons = document.querySelectorAll('.time-btn');
+        const startDateInput = document.getElementById('start-date');
+        const endDateInput = document.getElementById('end-date');
+        const filterBtn = document.getElementById('filter-btn');
+
+        // State
+        let chartInstance = null;
+        let currentTimeframe = '3d';
+
+        // Initialize with today's date for end date
+        const today = new Date();
+        endDateInput.valueAsDate = today;
+
+        // Set start date to 3 days ago by default
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(today.getDate() - 3);
+        startDateInput.valueAsDate = threeDaysAgo;
+
+        // Fetch data from the alltask table
+        async function fetchTaskData(startDate, endDate) {
+            try {
+                // Replace the URL with your actual API endpoint
+                const API_URL = `http://localhost:1080/api/alltasks?startDate=${startDate}&endDate=${endDate}`;
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch task data');
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching task data:', error);
+                return [];
+            }
+        }
+
+        // Create and update the chart with the provided data
+        function renderChart(data) {
+            // Destroy previous chart instance if it exists
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            // Convert the created_at to Date objects and group by date
+            const taskCounts = {};
+            data.forEach(task => {
+                const date = new Date(task.created_at).toLocaleDateString();
+                taskCounts[date] = (taskCounts[date] || 0) + 1;
+            });
+
+            // Prepare labels and data counts
+            const labels = Object.keys(taskCounts);
+            const counts = Object.values(taskCounts);
+
+            const ctx = chartCanvas.getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Tasks',
+                        data: counts,
+                        backgroundColor: 'rgba(227, 66, 75, 0.1)',
+                        borderColor: '#e3424b',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#e3424b',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            titleColor: '#333',
+                            bodyColor: '#333',
+                            borderColor: '#ddd',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                title: function (context) {
+                                    return context[0].label;
+                                },
+                                label: function (context) {
+                                    return `Tasks: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0,
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Handle timeframe button clicks
+        timeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                timeButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTimeframe = btn.dataset.timeframe;
+
+                const endDate = new Date();
+                endDateInput.valueAsDate = endDate;
+
+                let startDate = new Date();
+                if (currentTimeframe === '3d') startDate.setDate(endDate.getDate() - 3);
+                if (currentTimeframe === '7d') startDate.setDate(endDate.getDate() - 7);
+                if (currentTimeframe === '14d') startDate.setDate(endDate.getDate() - 14);
+                if (currentTimeframe === '1m') startDate.setDate(endDate.getDate() - 30);
+                if (currentTimeframe === '3m') startDate.setDate(endDate.getDate() - 90);
+                startDateInput.valueAsDate = startDate;
+
+                // Format dates to YYYY-MM-DD
+                const formattedStartDate = startDate.toISOString().split('T')[0];
+                const formattedEndDate = endDate.toISOString().split('T')[0];
+
+                fetchTaskData(formattedStartDate, formattedEndDate).then(data => renderChart(data));
+            });
+        });
+
+        // Handle date filter button click
+        filterBtn.addEventListener('click', () => {
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+
+            if (startDate > endDate) {
+                alert('Start date cannot be after end date');
+                return;
+            }
+
+            // Fetch data for custom date range
+            fetchTaskData(startDate, endDate).then(data => renderChart(data));
+        });
+
+        // Initialize with default timeframe
+        const initialEndDate = today.toISOString().split('T')[0];
+        const initialStartDate = threeDaysAgo.toISOString().split('T')[0];
+        fetchTaskData(initialStartDate, initialEndDate).then(data => renderChart(data));
+    </script>
+</body>
+
+</html>

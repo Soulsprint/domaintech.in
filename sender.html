@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Drag and Drop Task Assignment</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+  <link rel="stylesheet" href="send.css" />
+</head>
+<body>
+  <div class="menu-icon" onclick="toggleSidebar()">
+    <i class="fas fa-bars" style="color: #a67c52;"></i>
+  </div>
+  <div class="sidebar" id="sidebar">
+    <a href="Apage1.html"><i class="fas fa-home" style="color: white;"></i> Home</a>
+    <a href="sender.html"><i class="fas fa-tasks" style="color: white;"></i> Assign Task</a>
+    <a href="overalltask.html"><i class="fas fa-project-diagram" style="color: white;"></i> Overall Task</a>
+    <a href="Approvetask.html"><i class="fas fa-check-circle" style="color: white;"></i> Approve Task</a>
+    <a href="table.html"><i class="fas fa-clipboard-check" style="color: white;"></i> Completed Tasks</a>
+    <a href="Dashboard.html"><i class="fas fa-chart-line" style="color: white;"></i> Dashboard</a>
+  </div>
+
+  <div id="mycontainer">
+    <div id="Taskbox"></div>
+    <div id="one">
+      <div class="form-container">
+        <h3 id="Taskcomment">Add a New Task</h3><br>
+        <input type="text" id="name" placeholder="Enter Name" value="Sarthak">
+        <input type="text" id="number" placeholder="Enter Contact Number" value="9209498788">
+        <input type="text" id="accessories" placeholder="Enter Accessories" value="laptop">
+        <input type="text" id="problemReported" placeholder="Enter Problem Reported" value="slow">
+        <input type="number" id="timeline" placeholder="Enter Employee id" min="1" max="8" value="5">
+        <button onclick="addTask()">Add Task</button>
+      </div>
+
+      <!-- Tasks -->
+      <div class="container" id="tasksContainer"></div>
+
+      <!-- Persons -->
+      <div class="container">
+        <div class="person" id="person101" ondrop="drop(event, 101)" ondragover="dragOver(event)"></div><br>
+      </div>
+    </div>
+  </div>
+  <div class="taskbox"></div>
+
+  <!-- Storage Area -->
+  <div id="rack">
+    <h1 id="Store"></h1>
+    <div id="storage" ondrop="dropTaskInStorage(event)" ondragover="dragOver(event)">
+      Drop tasks here to store them
+    </div>
+  </div>
+
+  <div class="don"></div>
+
+  <script>
+    const input = document.getElementById("timeline");
+input.addEventListener("input", function () {
+  let value = parseInt(this.value);
+  if (isNaN(value) || value < 1 || value > 8) {
+    this.value = "";
+  }
+});
+
+function toggleSidebar() {
+  var sidebar = document.getElementById("sidebar");
+  sidebar.classList.toggle("active");
+}
+
+function addTask() {
+  const name = document.getElementById('name').value.trim();
+  const number = document.getElementById('number').value.trim();
+  const accessories = document.getElementById('accessories').value.trim();
+  const problemReported = document.getElementById('problemReported').value.trim();
+  const timeline = document.getElementById('timeline').value;
+
+  if (name && number && accessories && problemReported && timeline) {
+    const newTask = document.createElement('div');
+    newTask.className = 'task';
+    newTask.draggable = true;
+    newTask.textContent = name;
+    newTask.id = `task${Date.now()}`;
+    newTask.title = `Name: ${name}\nNumber: ${number}\nAccessories: ${accessories}\nProblem: ${problemReported}\nEMPID: ${timeline}`;
+    newTask.setAttribute("data-name", name);
+    newTask.setAttribute("data-number", number);
+    newTask.setAttribute("data-accessories", accessories);
+    newTask.setAttribute("data-problem", problemReported);
+    newTask.setAttribute("data-timeline", timeline);
+    newTask.addEventListener('dragstart', dragStart);
+
+    document.querySelector('.taskbox').appendChild(newTask);
+
+    document.getElementById('name').value = '';
+    document.getElementById('number').value = '';
+    document.getElementById('accessories').value = '';
+    document.getElementById('problemReported').value = '';
+    document.getElementById('timeline').value = '';
+  }
+}
+
+function dragStart(e) {
+  e.dataTransfer.setData('text/plain', e.target.id);
+}
+
+function dragOver(e) {
+  e.preventDefault();
+}
+
+function drop(e, assignedTo) {
+  e.preventDefault();
+  const taskId = e.dataTransfer.getData('text/plain');
+  const task = document.getElementById(taskId);
+  if (!task) return;
+
+  e.target.appendChild(task);
+  task.remove();
+
+  let name, number, accessories, problemReported, timeline, actualTaskId;
+
+  if (task.classList.contains('stored-task')) {
+    actualTaskId = task.dataset.taskId;
+    name = task.querySelector('.task-title').textContent;
+    number = task.querySelector('.task-details:nth-child(2)').textContent.replace('📞 ', '');
+    accessories = task.querySelector('.task-details:nth-child(3)').textContent.replace('🛠️ ', '');
+    problemReported = task.querySelector('.task-details:nth-child(4)').textContent.replace('⚠️ ', '');
+    timeline = parseInt(task.querySelector('.task-details:nth-child(5)').textContent.replace('⏳ ', '').replace(' EMPID', ''));
+
+    fetch(`http://localhost:1080/delete-stored-task/${actualTaskId}`, {
+      method: 'DELETE',
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('🗑 Deleted from storage:', data);
+
+      fetch('http://localhost:1080/save-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          number,
+          accessories,
+          problem_reported: problemReported,
+          timeline,
+          assigned_to: assignedTo
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log('✅ Stored task moved to task table:', data);
+      })
+      .catch(error => console.error('❌ Error saving task:', error));
+    })
+    .catch(err => console.error('❌ Error deleting from storage:', err));
+  } else {
+    name = task.getAttribute("data-name");
+    number = task.getAttribute("data-number");
+    accessories = task.getAttribute("data-accessories");
+    problemReported = task.getAttribute("data-problem");
+    timeline = parseInt(task.getAttribute("data-timeline"));
+
+    fetch('http://localhost:1080/save-task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        number,
+        accessories,
+        problem_reported: problemReported,
+        timeline,
+        assigned_to: assignedTo
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('✅ New task saved to task table:', data);
+    })
+    .catch(error => console.error('❌ Error saving task:', error));
+  }
+}
+
+function dropTaskInStorage(e) {
+  e.preventDefault();
+  const taskId = e.dataTransfer.getData('text/plain');
+  const task = document.getElementById(taskId);
+
+  if (task) {
+    const name = task.getAttribute("data-name");
+    const number = task.getAttribute("data-number");
+    const accessories = task.getAttribute("data-accessories");
+    const problemReported = task.getAttribute("data-problem");
+    const timeline = parseInt(task.getAttribute("data-timeline"));
+
+    fetch('http://localhost:1080/store-task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        number,
+        accessories,
+        problem_reported: problemReported,
+        timeline,
+        assigned_to: null // ✅ explicitly send null
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('✅ Task stored:', data);
+      displayStoredTask(name, number, accessories, problemReported, timeline, data.insertId);
+      task.remove();
+    })
+    .catch(error => console.error('❌ Error storing task:', error));
+  }
+}
+
+function displayStoredTask(name, number, accessories, problemReported, timeline, taskId) {
+  const storageDiv = document.getElementById('storage');
+
+  const storedTask = document.createElement('div');
+  storedTask.className = 'stored-task';
+  storedTask.draggable = true;
+  storedTask.id = `stored-task-${taskId}`;
+  storedTask.dataset.taskId = taskId;
+
+  storedTask.innerHTML = `
+    <div class="task-title">${name}</div>
+    <div class="task-details">📞 ${number}</div>
+    <div class="task-details">🛠️ ${accessories}</div>
+    <div class="task-details">⚠️ ${problemReported}</div>
+    <div class="task-details">⏳ ${timeline} EMPID</div>
+  `;
+
+  storedTask.addEventListener('dragstart', dragStart);
+  storageDiv.appendChild(storedTask);
+}
+
+function loadStoredTasks() {
+  fetch('http://localhost:1080/storage-tasks')
+    .then(response => response.json())
+    .then(tasks => {
+      tasks.forEach(task => {
+        displayStoredTask(task.name, task.number, task.accessories, task.problem_reported, task.timeline, task.id);
+      });
+    })
+    .catch(error => console.error('❌ Error fetching stored tasks:', error));
+}
+
+window.onload = loadStoredTasks;
+
+  </script>
+</body>
+</html>
