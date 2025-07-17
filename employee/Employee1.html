@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Employee Task Management</title>
+  <link rel="stylesheet" href="Employee1.css" />
+</head>
+<body>
+  <div class="menu-icon" onclick="toggleSidebar()">&#9776;</div>
+  <div class="sidebar" id="sidebar">
+    <a href="Employee1.html">Normal Task</a>
+    <a href="Reject 1.html">Rejected Task</a>
+  </div>
+
+  <div class="container">
+    <div class="task-list">
+      <h3>Tasks Assigned</h3>
+      <div id="taskList"></div>
+    </div>
+
+    <div class="task-window">
+      <div class="task-details">
+        <h3>Select a task to view details</h3>
+        <div id="task-details"></div>
+      </div>
+
+      <div class="task-submit">
+        <div class="status-dropdown">
+          <button id="status-btn" onclick="toggleStatusDropdown()">Status: Pending</button>
+          <div id="status-dropdown-content" class="status-dropdown-content" style="display: none;">
+            <button onclick="updateStatus('Pending')">Pending</button>
+            <button onclick="updateStatus('Working')">Working</button>
+            <button onclick="updateStatus('Done')">Done</button>
+            <button onclick="updateStatus('Error')">Error</button>
+
+          </div>
+        </div>
+
+        <div class="condition-input">
+          <button id="condition-btn" onclick="toggleConditionInput()">Condition</button>
+          <div id="condition-textarea-container" class="condition-textarea-container" style="display: none;">
+            <textarea id="condition-textarea" placeholder="Enter condition details..." rows="3"></textarea>
+            <div class="condition-buttons">
+              <button onclick="saveCondition()" class="save-btn">Save</button>
+              <button onclick="cancelCondition()" class="cancel-btn">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <button id="submit-task-btn" disabled>Submit Task to Admin</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleSidebar() {
+      document.getElementById("sidebar").classList.toggle("active");
+    }
+
+    let selectedTaskId = null;
+    let selectedTaskElement = null;
+    let taskData = {};
+
+    function toggleStatusDropdown() {
+      const dropdown = document.getElementById('status-dropdown-content');
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function updateStatus(status) {
+      if (selectedTaskId) {
+        taskData[selectedTaskId].status = status;
+        document.getElementById('status-btn').textContent = `Status: ${status}`;
+        document.getElementById('status-dropdown-content').style.display = 'none';
+        updateTaskItemVisuals(selectedTaskId);
+        updateTaskInDB(selectedTaskId);
+      }
+    }
+
+    function updateTaskItemVisuals(taskId) {
+      const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+      if (taskElement) {
+        const statusIndicator = taskElement.querySelector('.task-status-indicator');
+        const status = taskData[taskId].status;
+        if (statusIndicator) {
+          statusIndicator.className = `task-status-indicator status-${status.toLowerCase()}`;
+          statusIndicator.textContent = status;
+        }
+      }
+    }
+
+    function toggleConditionInput() {
+      const container = document.getElementById('condition-textarea-container');
+      const textarea = document.getElementById('condition-textarea');
+      container.style.display = container.style.display === 'block' ? 'none' : 'block';
+      if (selectedTaskId && taskData[selectedTaskId]) {
+        textarea.value = taskData[selectedTaskId].condition || '';
+      }
+    }
+
+    function saveCondition() {
+      if (selectedTaskId) {
+        const textarea = document.getElementById('condition-textarea');
+        const text = textarea.value.trim();
+        taskData[selectedTaskId].condition = text;
+        document.getElementById('condition-btn').textContent = text ? `Condition: ${text.slice(0, 20)}...` : 'Condition';
+        document.getElementById('condition-textarea-container').style.display = 'none';
+        updateTaskInDB(selectedTaskId);
+      }
+    }
+
+    function cancelCondition() {
+      const textarea = document.getElementById('condition-textarea');
+      if (selectedTaskId && taskData[selectedTaskId]) {
+        textarea.value = taskData[selectedTaskId].condition || '';
+      }
+      document.getElementById('condition-textarea-container').style.display = 'none';
+    }
+
+    function updateTaskInDB(taskId) {
+      const task = taskData[taskId];
+      fetch(`http://localhost:1080/update-task/${taskId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: task.status,
+          response: task.condition
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          console.log(`✅ Task ${taskId} updated in DB`);
+        } else {
+          console.error(`❌ Failed to update task ${taskId}:`, data.message);
+        }
+      })
+      .catch(err => {
+        console.error(`❌ API error for task ${taskId}:`, err);
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const taskList = document.getElementById("taskList");
+      const taskDetailsSection = document.getElementById("task-details");
+      const submitTaskBtn = document.getElementById("submit-task-btn");
+      const timeline = 1;
+
+      function fetchTasks() {
+        fetch(`http://localhost:1080/tasks/${timeline}`)
+          .then(response => response.json())
+          .then(tasks => {
+            taskList.innerHTML = "";
+            if (!tasks.length) {
+              taskList.innerHTML = "<p>No tasks assigned.</p>";
+              return;
+            }
+            tasks.forEach(task => {
+              taskData[task.id] = {
+                status: task.status || 'Pending',
+                condition: task.response || ''
+              };
+              const item = document.createElement("div");
+              item.className = "task-item";
+              const days = Math.floor((new Date() - new Date(task.created_at)) / (1000 * 60 * 60 * 24));
+              item.innerHTML = `
+                <strong>${task.problem_reported}</strong>
+                <span class="task-status-indicator status-${taskData[task.id].status.toLowerCase()}">${taskData[task.id].status}</span>
+                <br><span style="font-size: 12px; color: gray;">Assigned ${days} days ago</span>`;
+              item.dataset.taskId = task.id;
+              item.addEventListener("click", () => showTaskDetails(task, item));
+              taskList.appendChild(item);
+            });
+          })
+          .catch(err => console.error("Error fetching tasks:", err));
+      }
+
+      function showTaskDetails(task, element) {
+        if (selectedTaskElement) selectedTaskElement.classList.remove('selected');
+        selectedTaskId = task.id;
+        selectedTaskElement = element;
+        element.classList.add('selected');
+        const days = Math.floor((new Date() - new Date(task.created_at)) / (1000 * 60 * 60 * 24));
+        taskDetailsSection.innerHTML = `
+          <p><strong>Task ID:</strong> ${task.id}</p>
+          <p><strong>Customer Name:</strong> ${task.name}</p>
+          <p><strong>Accessories:</strong> ${task.accessories}</p>
+          <p><strong>Problem Reported:</strong> ${task.problem_reported}</p>
+          <p><strong>Time Assigned:</strong> ${days} days ago</p>`;
+        const current = taskData[task.id];
+        document.getElementById('status-btn').textContent = `Status: ${current.status}`;
+        document.getElementById('condition-btn').textContent = current.condition ? `Condition: ${current.condition.slice(0, 20)}...` : 'Condition';
+        submitTaskBtn.disabled = false;
+      }
+
+      submitTaskBtn.addEventListener("click", () => {
+        if (selectedTaskId && selectedTaskElement) {
+          const current = taskData[selectedTaskId];
+          fetch(`http://localhost:1080/complete-task/${selectedTaskId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(current)
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              alert(`✅ Task submitted successfully!\nStatus: ${current.status}\nCondition: ${current.condition}`);
+              selectedTaskElement.remove();
+              delete taskData[selectedTaskId];
+              selectedTaskId = null;
+              selectedTaskElement = null;
+              taskDetailsSection.innerHTML = "<p>No task selected.</p>";
+              submitTaskBtn.disabled = true;
+              document.getElementById('status-btn').textContent = 'Status: Pending';
+              document.getElementById('condition-btn').textContent = 'Condition';
+              document.getElementById('condition-textarea').value = '';
+            } else {
+              alert("❌ Error completing task: " + data.message);
+            }
+          })
+          .catch(err => {
+            console.error("❌ Error completing task:", err);
+            alert("❌ Failed to submit task.");
+          });
+        }
+      });
+
+      fetchTasks();
+    });
+
+    function testUpdate() {
+      fetch('http://localhost:1080/update-task/56', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'Working',
+          response: 'Battery replaced'
+        })
+      })
+      .then(res => res.json())
+      .then(data => console.log(data))
+      .catch(err => console.error(err));
+    }
+  </script>
+
+  <!-- <button onclick="testUpdate()">Test Update</button> -->
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="dashboard.css">
+    <title>Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            margin: 20px;
+        }
+
+        .table-container {
+            width: 80%;
+            margin: 20px auto;
+            background: rgba(255, 255, 255, 0.76);
+            border: 2px solid black;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            position: relative;
+            top: 50px;
+            overflow: auto;
+            max-height: 400px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid black;
+            padding: 12px;
+            text-align: left;
+            font-size: 16px;
+        }
+
+        th {
+            background-color: #A27B5C;
+            color: white;
+        }
+
+        .table-gap {
+            height: 250px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar" id="sidebar">
+        <a href="Apage1.html">Home</a>
+        <a href="sender.html">Assign Task</a>
+        <a href="Approvetask.html">Approve Task</a>
+        <a href="Dashboard.html">Dashboard</a>
+        <a href="Employee1.html">Employee 1</a>
+        <a href="Employee2.html">Employee 2</a>
+        <a href="Employee3.html">Employee 3</a>
+        <a href="Employee4.html">Employee 4</a>
+        <a href="Employee5.html">Employee 5</a>
+        <a href="Employee6.html">Employee 6</a>
+        <a href="Employee7.html">Employee 7</a>
+        <a href="Employee8.html">Employee 8</a>
+    </div>
+
+    <div class="content">
+        <h1>Welcome to the Employee Task Management System</h1>
+        <p>Select an option from the sidebar to proceed.</p>
+    </div>
+
+    <div class="table-container">
+        <h2>Approved Tasks</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Number</th>
+                    <th>Accessories</th>
+                    <th>Problem Reported</th>
+                    <th>Emp-ID</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="approved-tasks">
+                <!-- Dynamic data rows will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-gap"></div>
+
+    <div class="table-container">
+        <h2>Rejected Tasks</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Number</th>
+                    <th>Accessories</th>
+                    <th>Problem Reported</th>
+                    <th>Emp-ID</th>
+                    <th>Rejection Note</th> 
+                </tr>
+            </thead>
+            <tbody id="rejected-tasks">
+                <!-- Dynamic data rows will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const employeeId = 8; // Change dynamically if needed
+            fetchTasks("approved-tasks", `http://localhost:1080/task/${employeeId}`);
+            fetchTasks("rejected-tasks", `http://localhost:1080/rejected-tasks/${employeeId}`);
+        });
+
+        function fetchTasks(tableId, apiUrl) {
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    console.log(`✅ Data for ${tableId}:`, data);
+                    const tableBody = document.getElementById(tableId);
+                    tableBody.innerHTML = ""; // Clear existing table data
+
+                    if (!data || data.length === 0) {
+                        console.warn(`⚠️ No data found for ${tableId}`);
+                        return;
+                    }
+
+                    // Sort by ID for consistency
+                    data.sort((a, b) => a.id - b.id);
+
+                    // Populate the table
+                    data.forEach((task, index) => {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td>${index + 1}</td>  
+                            <td>${task.name}</td>
+                            <td>${task.number}</td>
+                            <td>${task.accessories}</td>
+                            <td>${task.problem_reported}</td>
+                            <td>${task.timeline}</td>
+                            <td>${task.status || task.rejection_note || "N/A"}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => console.error(`❌ Error fetching data for ${tableId}:`, error));
+        }
+    </script>
+
+</body>
+</html>

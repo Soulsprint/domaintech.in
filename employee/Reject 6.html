@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Task Management</title>
+    <link rel="stylesheet" href="Reject.css">
+</head>
+<body>
+    <div class="menu-icon" onclick="toggleSidebar()">&#9776;</div>
+    <div class="sidebar" id="sidebar">
+        <a href="Employee6.html">Normal Task</a>
+        <a href="Reject 6.html">Rejected Task</a>
+        <!-- <a href="#">Settings</a> -->
+    </div>
+    <div class="container">
+        <!-- Task list section -->
+        <div class="task-list">
+            <h3>Tasks Rejected</h3>
+            <div id="taskList">
+                <!-- Task items will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Task details section -->
+        <div class="task-window">
+            <div class="task-details">
+                <h3>Select a task to view details</h3>
+                <div id="task-details">
+                    <!-- Task details will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <!-- Task submission section -->
+            <div class="task-submit">
+                <button id="submit-task-btn" disabled>Submit Task to Admin</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+         function toggleSidebar() {
+            var sidebar = document.getElementById("sidebar");
+            if (sidebar.classList.contains("active")) {
+                sidebar.classList.remove("active");
+            } else {
+                sidebar.classList.add("active");
+            }
+        }
+        
+        document.addEventListener("DOMContentLoaded", () => {
+    const taskList = document.getElementById("taskList");
+    const taskDetailsSection = document.getElementById("task-details");
+    const submitTaskBtn = document.getElementById("submit-task-btn");
+
+    let selectedTaskId = null;
+    let selectedTaskElement = null; // Store the selected task element
+    const timeline = 6; // Employee1.html corresponds to timeline 1
+
+    // Fetch rejected tasks from backend using timeline
+    
+    function fetchTasks() {
+    fetch(`http://localhost:1080/rejected-tasks/${timeline}`)
+        .then(response => response.json())
+        .then(tasks => {
+            console.log("Rejected Tasks received from server:", tasks);
+            taskList.innerHTML = "";
+            if (tasks.length === 0) {
+                taskList.innerHTML = "<p>No rejected tasks assigned.</p>";
+                return;
+            }
+            tasks.forEach(task => {
+                const taskItem = document.createElement("div");
+                taskItem.className = "task-item";
+
+                // Validate the rejected_at field
+                let rejectedAt = task.rejected_at ? new Date(task.rejected_at) : null;
+                let formattedDate = "Unknown Date";
+                let daysDifference = "N/A";
+
+                if (rejectedAt && !isNaN(rejectedAt)) { 
+                    formattedDate = rejectedAt.toLocaleString(); // Format: MM/DD/YYYY, HH:MM AM/PM
+                    const today = new Date();
+                    const timeDifference = today - rejectedAt;
+                    daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24)); // Convert ms to days
+                } else {
+                    console.error("Invalid or missing date:", task.rejected_at);
+                }
+
+                taskItem.innerHTML = `
+                    <strong>${task.problem_reported}</strong>
+                    <br>
+                    <span style="font-size: 12px; color: gray;">Assigned ${daysDifference} days ago</span>
+                `;
+
+                taskItem.dataset.taskId = task.id;
+                taskItem.addEventListener("click", () => showTaskDetails(task, taskItem, formattedDate));
+                taskList.appendChild(taskItem);
+            });
+        })
+        .catch(error => console.error("Error fetching rejected tasks:", error));
+}
+
+// Display task details including rejection note and date/time
+function showTaskDetails(task, taskItem, formattedDate) {
+    selectedTaskId = task.task_id;
+    selectedTaskElement = taskItem; 
+
+    taskDetailsSection.innerHTML = `
+        <p><strong>Task ID:</strong> ${task.task_id}</p>
+        <p><strong>Customer Name:</strong> ${task.name}</p>
+        <p><strong>Accessories:</strong> ${task.accessories}</p>
+        <p><strong>Problem Reported:</strong> ${task.problem_reported}</p>
+        <p style="color: red;"><strong>Rejection Note:</strong> ${task.rejection_note || "No note provided."}</p>
+        <p><strong>Rejected At:</strong> ${formattedDate}</p>
+    `;
+
+    submitTaskBtn.disabled = false;
+}
+
+
+    // Submit task and move it from rejected_tasks to completed_tasks
+    submitTaskBtn.addEventListener("click", () => {
+        if (selectedTaskId && selectedTaskElement) {
+            console.log(`🔄 Submitting task ID: ${selectedTaskId}`);
+
+            fetch(`http://localhost:1080/submit-task/${selectedTaskId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ assigned_to: timeline }) // Pass assigned_to
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("📥 Response from server:", data);
+
+                if (data.success) {
+                    alert("✅ Task submitted and moved successfully!");
+
+                    // Remove task from UI
+                    selectedTaskElement.remove();
+
+                    // Reset details section
+                    selectedTaskId = null;
+                    selectedTaskElement = null;
+                    taskDetailsSection.innerHTML = "<p>No task selected.</p>";
+                    submitTaskBtn.disabled = true;
+                } else {
+                    alert("❌ Error completing task: " + data.message);
+                }
+            })
+            .catch(error => {
+                console.error("❌ Error completing task:", error);
+                alert("❌ Failed to submit task.");
+            });
+        }
+    });
+
+    // Load initial tasks
+    fetchTasks();
+});
+
+
+    </script>
+    
+</body>
+</html>
